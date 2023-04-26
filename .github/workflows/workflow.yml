@@ -1,0 +1,94 @@
+jobs:
+  checkout:
+    name: Checkout
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: 01009b90006dc000
+  clean:
+    name: Clean
+    needs: checkout
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clean
+        run: ./exlaunch.sh clean
+        shell: bash
+  build:
+    name: Build
+    needs: clean
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build
+        run: ./exlaunch.sh build
+        shell: bash
+  upload-artifacts:
+    name: Upload Artifacts
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upload Artifact 1
+        uses: actions/upload-artifact@v3
+        with:
+          name: main.npdm
+          path: ./deploy/main.npdm
+      - name: Upload Artifact 2
+        uses: actions/upload-artifact@v3
+        with:
+          name: subsdk9
+          path: ./deploy/subsdk9
+  download-artifacts:
+    name: Download Artifacts
+    needs: upload-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifact 1
+        uses: actions/download-artifact@v3
+        with:
+          name: main.npdm
+      - name: Download Artifact 2
+        uses: actions/download-artifact@v3
+        with:
+          name: subsdk9
+  create-release:
+    name: Create Release
+    needs: download-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: create-release
+        name: Create Release
+        uses: actions/create-release@v1
+        with:
+          release_name: v${{ github.ref }}
+          tag_name: v${{ github.ref }}
+  upload-release-assets:
+    name: Upload Release Assets
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        name: Upload Release Asset 1
+        uses: actions/upload-release-asset@v1
+        with:
+          asset_content_type: application/zip
+          asset_name: main.npdm
+          asset_path: ./deploy/main.npdm
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+      - env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        name: Upload Release Asset 2
+        uses: actions/upload-release-asset@v1
+        with:
+          asset_content_type: application/zip
+          asset_name: subsdk9
+          asset_path: ./deploy/subsdk9
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+name: Workflow
+on:
+  push:
+    branches:
+      01009b90006dc000
